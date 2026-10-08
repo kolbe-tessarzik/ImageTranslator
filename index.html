@@ -1,8 +1,171 @@
-<input id="textInput"/>
 <button id="downloadButton">Download</button>
 <div id="out"></div>
 
-<canvas id="hiddenCanvas" width="500" height="500"></canvas>
 <input type="file" id="imageUpload"/>
+
+<link href="fontstyles.css" rel="stylesheet">
+
+<style>
+/* --- Base reset --- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root{
+  --bg-primary: #0a0e14;
+  --bg-secondary: #141920;
+  --bg-tertiary: #1a1f28;
+  --accent: #6ee7b7;
+  --accent-dim: #34d399;
+  --text-primary: #e8eaed;
+  --text-secondary: #9ca3af;
+  --border: #2d3748;
+  --shadow: rgba(0,0,0,0.45);
+}
+body{
+  font-family: 'Literata', serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  padding: 2rem 1rem;
+  -webkit-font-smoothing:antialiased;
+}
+.container{ max-width: 1100px; margin: 0 auto; }
+header{ margin-bottom: 2.25rem; }
+h1{ font-size: 2rem; font-weight: 600; background: linear-gradient(135deg,var(--text-primary),var(--accent)); background-clip:text; -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom: 0.5rem; }
+.subtitle{ color:var(--text-secondary); font-size:0.95rem; font-style:italic; }
+.header-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; }
+.footer-links{
+  margin-top: 2.5rem;
+  display:flex;
+  gap:1.5rem;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+  padding-right: 0.5rem;
+}
+.footer-links a{ color:var(--accent); text-decoration:underline; text-underline-offset:3px; font-size:0.95rem; font-weight:600; }
+.footer-links a:hover{ color:var(--accent-dim); }
+
+.section{
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 2.25rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 10px 34px rgba(0,0,0,0.58);
+}
+
+/* de-emphasize the small key row so the split becomes the focal point */
+.section:first-of-type{
+  background: transparent;
+  border: 0;
+  padding: 0.6rem 0;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.section:first-of-type label{ color:var(--text-secondary); text-transform:none; font-weight:600; font-size:0.95rem; }
+.section:first-of-type input{ max-width:520px; margin-left:auto; background:rgba(255,255,255,0.02); }
+
+label{ display:flex; justify-content:space-between; align-items:center; margin-bottom:0.6rem; font-weight:600; color:var(--accent); text-transform:uppercase; font-size:0.85rem; }
+.label-text{ flex:1; }
+.char-count{ font-family:'JetBrains Mono', monospace; font-size:0.78rem; color:var(--text-secondary); font-weight:400; }
+
+input, .box{ width:100%; padding:1.1rem 1.2rem; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:12px; color:var(--text-primary); font-family:'JetBrains Mono', monospace; font-size:1.02rem; resize:vertical; }
+input:focus, .box:focus{ outline:none; border-color:var(--accent); box-shadow:0 0 0 6px rgba(110,231,183,0.06); background:linear-gradient(180deg, rgba(255,255,255,0.01), var(--bg-secondary)); }
+
+/* emphasize the two main columns (larger, more generous spacing) */
+.column .box{ min-height:520px; font-size:1.06rem; padding:1.25rem; line-height:1.8; border-radius:14px; }
+@media (max-width:980px){ .column .box{ min-height:320px; } }
+
+.box{ min-height:140px; line-height:1.6; }
+
+.button-group{ display:flex; gap:0.75rem; margin-top:1rem; }
+
+/* split layout for encode ↔ decode columns — equal-width columns */
+.split{ display:grid; grid-template-columns: 1fr 1fr; gap:3rem; align-items:start; }
+.column{ min-width:0; display:flex; flex-direction:column; gap:0.6rem; }
+@media (max-width:980px){ .split{ grid-template-columns: 1fr; gap:1rem; } }
+
+button{ flex:1; padding:0.8rem 1rem; background:var(--bg-tertiary); border:1px solid var(--border); border-radius:10px; color:var(--text-primary); font-weight:600; cursor:pointer; transition:all 0.18s ease; position:relative; overflow:hidden; }
+button.primary{ background: linear-gradient(135deg,var(--accent-dim),var(--accent)); border-color:var(--accent); color:var(--bg-primary); }
+button:active{ transform:translateY(0); }
+button::before{ content:''; position:absolute; top:50%; left:50%; width:0; height:0; border-radius:50%; background:rgba(110,231,183,0.08); transform:translate(-50%,-50%); transition:width .35s ease,height .35s ease; }
+button:hover::before{ width:300px; height:300px; }
+
+.compression-stats{ margin-top:1rem; padding:0.9rem; background:var(--bg-primary); border:1px solid var(--border); border-radius:8px; display:none; }
+.compression-stats.visible{ display:block; }
+.stat-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:0.45rem; }
+.stat-label{ color:var(--text-secondary); font-size:0.88rem; }
+.stat-value{ font-family:'JetBrains Mono', monospace; font-weight:600; }
+.stat-value.positive{ color:var(--accent); }
+.stat-value.negative{ color:#f87171; }
+
+.success-indicator{ position:fixed; top:1.75rem; right:1.75rem; background:var(--accent); color:var(--bg-primary); padding:0.6rem 1rem; border-radius:8px; font-weight:700; opacity:0; transform:translateY(-8px); transition:all .28s ease; pointer-events:none; }
+.success-indicator.show{ opacity:1; transform:translateY(0); }
+
+@media (max-width:640px){ body{ padding:1rem; } h1{ font-size:1.6rem; } .button-group{ flex-direction:column; } }
+
+canvas#hiddenCanvas{}
+</style>
+
+<div class="container">
+  <header>
+    <div class="header-row">
+      <div>
+        <h1>Image Cipher</h1>
+        <div class="subtitle">Compress and encrypt text with visual encoding</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="section">
+    <label>Encryption Key</label>
+    <input id="keyInput" type="text" placeholder="Optional passphrase for encoding">
+  </div>
+
+  <div class="section">
+    <div class="split">
+      <div class="column">
+        <label>
+          <span class="label-text">Input Text</span>
+          <span class="char-count" id="inputCount">0 characters</span>
+        </label>
+        <textarea id="textInput" class="box" placeholder="Enter text to encode..."></textarea>
+      </div>
+
+      <div class="column">
+        <label>
+          <span class="label-text">Encoded Image</span>
+          <span class="char-count" id="encodedCount">0 characters</span>
+        </label>
+        <!-- editable so users can paste/modify encoded blocks -->
+        <div id="encodedOutput" class="box" placeholder="Encoded image will appear here...">
+            <canvas id="hiddenCanvas" width="500" height="500"></canvas>
+        </div>
+
+        <div class="compression-stats" id="compressionStats">
+          <div class="stat-row">
+            <span class="stat-label">Original Size</span>
+            <span class="stat-value" id="originalSize">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Encoded Size</span>
+            <span class="stat-value" id="encodedSize">0</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Compression</span>
+            <span class="stat-value" id="compressionPercent">0%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer-links">
+  <a href="about.html">About</a>
+  <a href="https://github.com/kolbe-tessarzik/BlockTranslator" target="_blank" rel="noopener noreferrer">Fork on GitHub</a>
+</div>
+
+<div id="successIndicator" class="success-indicator">Copied!</div>
 
 <script src="gen_image.js"></script>
