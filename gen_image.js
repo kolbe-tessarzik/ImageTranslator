@@ -32,12 +32,16 @@ function remove_alpha(data) {
 }
 
 function generate(text) {
-    const imageData = ctx.createImageData(width, height);
-    if (text.length > 256**4) {
-        alert('Text is too long. Please limit to 256**4 characters.');
+    if (text.length > 256**3) {
+        alert('Text is too long. Please limit to 256**3 characters.');
         return;
     }
 
+    const size = Math.ceil(Math.sqrt((text.length + 3) / 3));
+    canvas.width = size;
+    canvas.height = size;
+
+    const imageData = ctx.createImageData(canvas.width, canvas.height);
     let data = imageData.data;
 
     let building_data = new Uint8ClampedArray((data.length / 4) * 3);
@@ -65,10 +69,12 @@ function generate(text) {
     }
     console.log(building_data);
     data = add_alpha(building_data);
-    imageData.data.set(data);
+    ctx.putImageData(ctx.getImageData(0, 0, canvas.width, canvas.height), 0, 0);
 
     console.log(data);
     console.log(decode(data));
+
+    imageData.data.set(data);
 
     ctx.putImageData(imageData, 0, 0);
 }
@@ -87,9 +93,6 @@ function decode(data) {
         console.log(`data[${i}] = ${byte}`);
         result += String.fromCharCode(byte);
         console.log(`Decoded char: '${String.fromCharCode(byte)}'`);
-        if (i > 100) {
-            return;
-        }
     }
     return result;
 }
@@ -109,8 +112,7 @@ document.getElementById('downloadButton').addEventListener('click', () => {
     downloadLink.remove();
 });
 
-document.getElementById('imageUpload').addEventListener('change', (event) => {
-    const file = event.target.files[0];
+function decodeImage(file) {
     if (!file) return;
 
     const reader = new FileReader();
@@ -129,9 +131,8 @@ document.getElementById('imageUpload').addEventListener('change', (event) => {
             const data = imageData.data;
             console.log(data);
 
-            console.log(decode(data));
-
-            out.textContent = decode(data);
+            const text = decode(data);
+            out.textContent = text ?? '';
 
             console.log(`Loaded a ${canvas.width}x${canvas.height} image.`);
             console.log(`Total values in RGBA array: ${data.length}`);
@@ -144,4 +145,18 @@ document.getElementById('imageUpload').addEventListener('change', (event) => {
     };
 
     reader.readAsDataURL(file);
+}
+
+document.getElementById('imageUpload').addEventListener('change', (event) => {
+    decodeImage(event.target.files[0]);
+});
+
+document.addEventListener('paste', (event) => {
+    const imageItem = Array.from(event.clipboardData?.items ?? [])
+        .find(item => item.kind === 'file' && item.type === "image/png");
+    const imageFile = imageItem?.getAsFile();
+    if (!imageFile) return;
+
+    event.preventDefault();
+    decodeImage(imageFile);
 });
